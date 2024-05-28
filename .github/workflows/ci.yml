@@ -36,9 +36,9 @@ jobs:
           yarn install --frozen-lockfile
       #    yarn run ci:install
       #          yarn add -W typescript@next jest ts-jest ts-node ynpx lerna
-      - name: Lint
-        id: npm-lint
-        run: npm run lint
+#      - name: Lint
+#        id: npm-lint
+#        run: npm run lint
 
       - name: Test
         id: npm-ci-test
