@@ -17,6 +17,8 @@ inputs:
     required: true
   autoCreateOutputDir:
     description: 'auto create outputFile path'
+  allowMultiRoot:
+    description: 'yaml allowMultiRoot'
 
 # Define your outputs here.
 outputs:

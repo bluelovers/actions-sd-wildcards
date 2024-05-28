@@ -71,7 +71,9 @@ export async function run(): Promise<void>
 				throw new RangeError(`The extname of file only allow .yaml or .yml`)
 			}
 
-			const current = parseWildcardsYaml(await readFile(file));
+			const current = parseWildcardsYaml(await readFile(file), {
+				allowMultiRoot: envBool(getInput('allowMultiRoot')) as boolean,
+			});
 
 			if (doc)
 			{
