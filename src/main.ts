@@ -1,26 +1,103 @@
-import * as core from '@actions/core'
-import { wait } from './wait'
+import { debug, getInput, setFailed, setOutput } from '@actions/core'
+import { stream } from 'fast-glob'
+import { dirname, extname, resolve } from 'path'
+import {
+	_mergeWildcardsYAMLDocumentRootsCore,
+	IWildcardsYAMLDocument,
+	parseWildcardsYaml,
+	stringifyWildcardsYamlData,
+} from 'sd-wildcards-utils';
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import { envBool } from 'env-bool';
+
+function isAllowedExt(ext: string, loose?: boolean): ext is '.yaml' | '.yml'
+{
+	return ext === '.yaml' || loose && ext === '.yml'
+}
 
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
-export async function run(): Promise<void> {
-  try {
-    const ms: string = core.getInput('milliseconds')
+export async function run(): Promise<void>
+{
+	try
+	{
+		let outputFile: string = getInput('outputFile')
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+		debug(`outputFile: ${outputFile}`)
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+		if (!isAllowedExt(extname(outputFile)))
+		{
+			throw new RangeError(`The extname of outputFile only allow .yaml`)
+		}
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
-  } catch (error) {
-    // Fail the workflow run if an error occurs
-    if (error instanceof Error) core.setFailed(error.message)
-  }
+		outputFile = resolve(outputFile);
+
+		let paths: string | string[] = getInput('paths')
+
+		paths = paths?.split(/[\r\n]/).reduce((a, v) =>
+		{
+
+			v = v.trim();
+			if (v.length)
+			{
+				a.push(v)
+			}
+
+			return a
+		}, [] as string[]);
+
+		debug(`paths: ${paths}`)
+
+		if (!paths?.length)
+		{
+			throw new RangeError(`The paths should not be empty`)
+		}
+
+		let doc: IWildcardsYAMLDocument;
+
+		for await (const file of stream(paths, {
+			absolute: true,
+			onlyFiles: true,
+			throwErrorOnBrokenSymbolicLink: true,
+			unique: true,
+		}) as any as string[])
+		{
+			console.log(`processing ${file}`);
+
+			if (!isAllowedExt(extname(file), true))
+			{
+				throw new RangeError(`The extname of file only allow .yaml or .yml`)
+			}
+
+			const current = parseWildcardsYaml(await readFile(file));
+
+			if (doc)
+			{
+				_mergeWildcardsYAMLDocumentRootsCore(doc, current);
+			}
+
+			doc ??= current;
+		}
+
+		if (envBool(getInput('autoCreateOutputDir')))
+		{
+			await mkdir(dirname(outputFile), {
+				recursive: true,
+			})
+		}
+
+		await writeFile(outputFile, stringifyWildcardsYamlData(doc, {
+			lineWidth: 0,
+		}))
+
+		// Set outputs for other workflow steps to use
+		setOutput('time', new Date().toTimeString())
+	}
+	catch (error)
+	{
+		// Fail the workflow run if an error occurs
+		if (error instanceof Error) setFailed(error.message)
+	}
 }

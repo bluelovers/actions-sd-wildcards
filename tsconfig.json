@@ -1,4 +1,5 @@
 {
+  "extends": "@bluelovers/tsconfig/tsdx/index.json",
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "target": "ES2022",
