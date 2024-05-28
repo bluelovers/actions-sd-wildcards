@@ -50252,7 +50252,9 @@ async function run() {
             if (!isAllowedExt((0, path_1.extname)(file), true)) {
                 throw new RangeError(`The extname of file only allow .yaml or .yml`);
             }
-            const current = (0, sd_wildcards_utils_1.parseWildcardsYaml)(await (0, promises_1.readFile)(file));
+            const current = (0, sd_wildcards_utils_1.parseWildcardsYaml)(await (0, promises_1.readFile)(file), {
+                allowMultiRoot: (0, env_bool_1.envBool)((0, core_1.getInput)('allowMultiRoot')),
+            });
             if (doc) {
                 (0, sd_wildcards_utils_1._mergeWildcardsYAMLDocumentRootsCore)(doc, current);
             }
