@@ -83,7 +83,7 @@ jobs:
         name: run script
         if: success()
         #        env:
-        run: yarn run package
+        run: yarn run ci:build
       -
         name: Push changes
         if: success()

@@ -29,6 +29,8 @@
     "coverage": "npx make-coverage-badge --output-path ./badges/coverage.svg",
     "lint": "npx eslint . -c ./.github/linters/.eslintrc.yml",
     "package": "npx ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "ci:build": "npm run package && npm run ci:build:commit",
+    "ci:build:commit": "git add ./dist && git commit ./dist -m \"build: update build\" & echo ci:build:commit",
     "package:watch": "npm run package -- --watch",
     "test": "npx jest",
     "all": "npm run lint && npm run test && npm run coverage && npm run package",
