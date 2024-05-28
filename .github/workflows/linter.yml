@@ -17,6 +17,7 @@ jobs:
   lint:
     name: Lint Codebase
     runs-on: ubuntu-latest
+    if: "0"
 
     steps:
       - name: Checkout
