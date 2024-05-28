@@ -32,10 +32,13 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
-
-      - name: Install Dependencies
-        id: install
-        run: npm ci
+      
+      -
+        name: install deps
+        run: |
+          yarn install --frozen-lockfile
+      #    yarn run ci:install
+      #          yarn add -W typescript@next jest ts-jest ts-node ynpx lerna
 
       - name: Lint Codebase
         id: super-linter
