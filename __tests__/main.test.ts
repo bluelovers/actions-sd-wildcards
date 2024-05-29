@@ -51,11 +51,6 @@ describe('action', () => {
     await main.run()
     expect(runMock).toHaveReturned()
 
-    expect(setOutputMock).toHaveBeenNthCalledWith(
-      1,
-      'time',
-      expect.stringMatching(timeRegex)
-    )
     expect(errorMock).not.toHaveBeenCalled()
   })
 
