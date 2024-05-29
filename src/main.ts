@@ -1,4 +1,4 @@
-import { debug, notice, getInput, setFailed, setOutput } from '@actions/core'
+import { notice, getInput, setFailed, setOutput } from '@actions/core'
 import { stream } from 'fast-glob'
 import { dirname, extname, resolve } from 'path'
 import {

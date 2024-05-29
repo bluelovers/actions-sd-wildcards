@@ -50224,7 +50224,7 @@ function isAllowedExt(ext, loose) {
 async function run() {
     try {
         let outputFile = (0, core_1.getInput)('outputFile');
-        (0, core_1.debug)(`outputFile: ${outputFile}`);
+        (0, core_1.notice)(`outputFile: ${outputFile}`);
         if (!isAllowedExt((0, path_1.extname)(outputFile))) {
             throw new RangeError(`The extname of outputFile only allow .yaml`);
         }
@@ -50237,7 +50237,7 @@ async function run() {
             }
             return a;
         }, []);
-        (0, core_1.debug)(`paths: ${paths}`);
+        (0, core_1.notice)(`paths: ${paths}`);
         if (!paths?.length) {
             throw new RangeError(`The paths should not be empty`);
         }
@@ -50248,7 +50248,7 @@ async function run() {
             throwErrorOnBrokenSymbolicLink: true,
             unique: true,
         })) {
-            console.log(`processing ${file}`);
+            (0, core_1.notice)(`processing ${file}`);
             if (!isAllowedExt((0, path_1.extname)(file), true)) {
                 throw new RangeError(`The extname of file only allow .yaml or .yml`);
             }
