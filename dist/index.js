@@ -50254,6 +50254,7 @@ async function run() {
             }
             const current = (0, sd_wildcards_utils_1.parseWildcardsYaml)(await (0, promises_1.readFile)(file), {
                 allowMultiRoot: (0, env_bool_1.envBool)((0, core_1.getInput)('allowMultiRoot')),
+                disableUnsafeQuote: (0, env_bool_1.envBool)((0, core_1.getInput)('disableUnsafeQuote')),
             });
             if (doc) {
                 (0, sd_wildcards_utils_1._mergeWildcardsYAMLDocumentRootsCore)(doc, current);
@@ -61128,13 +61129,14 @@ function normalizeDocument(doc) {
   var _doc$options;
   let options = (_doc$options = doc.options) !== null && _doc$options !== void 0 ? _doc$options : {};
   const defaults = createDefaultVisitWildcardsYAMLOptions();
+  let checkUnsafeQuote = !options.disableUnsafeQuote;
   let visitorOptions = {
     ...defaults,
     Scalar(key, node) {
       let value = node.value;
       if (typeof value === 'string') {
-        if (RE_UNSAFE_QUOTE.test(value)) {
-          throw new SyntaxError(`Invalid SYNTAX. key: ${key}, node: ${node}`);
+        if (checkUnsafeQuote && RE_UNSAFE_QUOTE.test(value)) {
+          throw new SyntaxError(`Invalid SYNTAX [UNSAFE_QUOTE]. key: ${key}, node: ${node}`);
         } else if (node.type === 'QUOTE_DOUBLE' || node.type === 'QUOTE_SINGLE' && !value.includes('\\')) {
           node.type = 'PLAIN';
         }
@@ -61389,12 +61391,12 @@ function normalizeDocument(e) {
   var t;
   let r = null !== (t = e.options) && void 0 !== t ? t : {};
   const a = createDefaultVisitWildcardsYAMLOptions();
-  let i = {
+  let i = !r.disableUnsafeQuote, s = {
     ...a,
     Scalar(e, t) {
       let r = t.value;
       if ("string" == typeof r) {
-        if (o.test(r)) throw new SyntaxError(`Invalid SYNTAX. key: ${e}, node: ${t}`);
+        if (i && o.test(r)) throw new SyntaxError(`Invalid SYNTAX [UNSAFE_QUOTE]. key: ${e}, node: ${t}`);
         ("QUOTE_DOUBLE" === t.type || "QUOTE_SINGLE" === t.type && !r.includes("\\")) && (t.type = "PLAIN"), 
         r = r.replace(/[\x00\u200b]+/g, "").replace(/[\s\xa0]+|\s+$/gm, " "), n.test(r) && (("PLAIN" === t.type || "BLOCK_FOLDED" === t.type && /#/.test(r)) && (t.type = "BLOCK_LITERAL"), 
         r = r.replace(/^\s+|\s+$/g, "").replace(/\n\s*\n/g, "\n")), t.value = r;
@@ -61403,11 +61405,11 @@ function normalizeDocument(e) {
   };
   if (!r.disableUniqueItemValues) {
     const e = a.Seq;
-    i.Seq = (t, r, ...a) => {
+    s.Seq = (t, r, ...a) => {
       e(t, r, ...a), uniqueSeqItems(r.items);
     };
   }
-  visitWildcardsYAML(e, i);
+  visitWildcardsYAML(e, s);
 }
 
 function parseWildcardsYaml(t, r) {

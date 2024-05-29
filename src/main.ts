@@ -73,6 +73,7 @@ export async function run(): Promise<void>
 
 			const current = parseWildcardsYaml(await readFile(file), {
 				allowMultiRoot: envBool(getInput('allowMultiRoot')) as boolean,
+				disableUnsafeQuote: envBool(getInput('disableUnsafeQuote')) as boolean,
 			});
 
 			if (doc)

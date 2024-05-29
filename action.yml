@@ -18,7 +18,9 @@ inputs:
   autoCreateOutputDir:
     description: 'auto create outputFile path'
   allowMultiRoot:
-    description: 'yaml allowMultiRoot'
+    description: 'wildcards allowMultiRoot'
+  disableUnsafeQuote:
+    description: 'wildcards disableUnsafeQuote'
 
 # Define your outputs here.
 outputs:

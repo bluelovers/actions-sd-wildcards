@@ -84,6 +84,16 @@ jobs:
         if: success()
         #        env:
         run: yarn run ci:build
+
+      -
+        name: Test Local Action
+        id: test-action
+        uses: ./
+        with:
+          paths: |
+            __fixtures__/*.yaml
+          outputFile: bundle.test.yaml
+
       -
         name: Push changes
         if: success()
