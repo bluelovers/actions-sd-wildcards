@@ -94,6 +94,8 @@ export async function run(): Promise<void>
 			lineWidth: 0,
 		}))
 
+		notice(`output: ${outputFile}`)
+
 		// Set outputs for other workflow steps to use
 		setOutput('time', new Date().toTimeString())
 	}

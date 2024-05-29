@@ -50268,6 +50268,7 @@ async function run() {
         await (0, promises_1.writeFile)(outputFile, (0, sd_wildcards_utils_1.stringifyWildcardsYamlData)(doc, {
             lineWidth: 0,
         }));
+        (0, core_1.notice)(`output: ${outputFile}`);
         // Set outputs for other workflow steps to use
         (0, core_1.setOutput)('time', new Date().toTimeString());
     }
