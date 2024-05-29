@@ -29,3 +29,11 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-patch"]
     open-pull-requests-limit: 0
+  -
+    package-ecosystem: "mix"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Disable version updates for hex dependencies
+    open-pull-requests-limit: 0
+    
