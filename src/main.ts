@@ -1,4 +1,4 @@
-import { debug, getInput, setFailed, setOutput } from '@actions/core'
+import { debug, notice, getInput, setFailed, setOutput } from '@actions/core'
 import { stream } from 'fast-glob'
 import { dirname, extname, resolve } from 'path'
 import {
@@ -25,7 +25,7 @@ export async function run(): Promise<void>
 	{
 		let outputFile: string = getInput('outputFile')
 
-		debug(`outputFile: ${outputFile}`)
+		notice(`outputFile: ${outputFile}`)
 
 		if (!isAllowedExt(extname(outputFile)))
 		{
@@ -48,7 +48,7 @@ export async function run(): Promise<void>
 			return a
 		}, [] as string[]);
 
-		debug(`paths: ${paths}`)
+		notice(`paths: ${paths}`)
 
 		if (!paths?.length)
 		{
@@ -64,7 +64,7 @@ export async function run(): Promise<void>
 			unique: true,
 		}) as any as string[])
 		{
-			console.log(`processing ${file}`);
+			notice(`processing ${file}`);
 
 			if (!isAllowedExt(extname(file), true))
 			{

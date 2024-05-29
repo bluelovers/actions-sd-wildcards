@@ -57,7 +57,8 @@ jobs:
         id: test-action
         uses: ./
         with:
-          paths: __fixtures__
+          paths: |
+            __fixtures__/*.yaml
           outputFile: bundle.test.yaml
 
       - name: Print Output
