@@ -745,10 +745,10 @@
   resolved "https://registry.npmjs.org/@types/json5/-/json5-0.0.29.tgz#ee28707ae94e11d2b827bcbe5270bcea7f3e71ee"
   integrity sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==
 
-"@types/node@*", "@types/node@^20.12.12":
-  version "20.12.12"
-  resolved "https://registry.npmjs.org/@types/node/-/node-20.12.12.tgz#7cbecdf902085cec634fdb362172dfe12b8f2050"
-  integrity sha512-eWLDGF/FOSPtAvEqeRAQ4C8LSA7M1I7i0ky1I8U7kD1J5ITyW3AsRhQrKVoWf5pFKZ2kILsEGJhsI9r93PYnOw==
+"@types/node@*", "@types/node@^20.12.13":
+  version "20.12.13"
+  resolved "https://registry.npmjs.org/@types/node/-/node-20.12.13.tgz#90ed3b8a4e52dd3c5dc5a42dde5b85b74ad8ed88"
+  integrity sha512-gBGeanV41c1L171rR7wjbMiEpEI/l5XFQdLLfhr/REwpgDy/4U8y89+i8kRiLzDyZdOkXh+cRaTetUnCYutoXA==
   dependencies:
     undici-types "~5.26.4"
 
@@ -3480,10 +3480,10 @@ safe-regex-test@^1.0.3:
     es-errors "^1.3.0"
     is-regex "^1.1.4"
 
-sd-wildcards-utils@^1.0.13:
-  version "1.0.13"
-  resolved "https://registry.npmjs.org/sd-wildcards-utils/-/sd-wildcards-utils-1.0.13.tgz#d4a4aa5779dcd169c8c7a1f0bbaaff95843d75eb"
-  integrity sha512-vW+CuIJca7EVVEwAhfGkkTdx4qJtF90MwRDbnlrF+pHqgYbEUVFyMtXnLSFAnK4Wi8zx3hKCM4XHa/JRZFS4fA==
+sd-wildcards-utils@^1.0.18:
+  version "1.0.18"
+  resolved "https://registry.npmjs.org/sd-wildcards-utils/-/sd-wildcards-utils-1.0.18.tgz#d4e44f498dc919c1cb6b81d0ad76b8ca0a2cf82a"
+  integrity sha512-jmdkwbzp/ABo0+YPRc+7/o+r+9k7c2oMTrK9SHoI0fMs4RCgmVYAglNqAmmRmGF21519XFj0U4SmPIrEcqW+pg==
   dependencies:
     array-hyper-unique "^2.1.6"
     picomatch "^4.0.2"
@@ -3851,10 +3851,10 @@ typedarray-dts@^1.0.0:
   resolved "https://registry.npmjs.org/typedarray-dts/-/typedarray-dts-1.0.0.tgz#9dec9811386dbfba964c295c2606cf9a6b982d06"
   integrity sha512-Ka0DBegjuV9IPYFT1h0Qqk5U4pccebNIJCGl8C5uU7xtOs+jpJvKGAY4fHGK25hTmXZOEUl9Cnsg5cS6K/b5DA==
 
-typescript@^5.5.0-dev.20240528:
-  version "5.5.0-dev.20240528"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-5.5.0-dev.20240528.tgz#00904fc715fa9f24f0e9bf4ce898f4064603dd2d"
-  integrity sha512-lF9CgEwbCTMnq59hkXeSQOzUmqSxkhlTk5DuPKenvpyEVd7r1uH8q8EAgPaKhp5SO5m764uWJvE4MpvyXDKuJw==
+typescript@^5.5.0-dev.20240530:
+  version "5.5.0-dev.20240530"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-5.5.0-dev.20240530.tgz#90a13ecaabb535086e036e910b8d0fa703bd579b"
+  integrity sha512-r/4r/a9tbtPRHfif0An0GLycB70C3ci3m9fhpgiv6Ekyl7mxYc4w8aX/R+vQ4OJlmPosJJUCjUbljH11g6C56g==
 
 unbox-primitive@^1.0.2:
   version "1.0.2"

@@ -21,6 +21,8 @@ inputs:
     description: 'wildcards allowMultiRoot'
   disableUnsafeQuote:
     description: 'wildcards disableUnsafeQuote'
+  minifyPrompts:
+    description: 'wildcards disableUnsafeQuote'
 
 # Define your outputs here.
 outputs:

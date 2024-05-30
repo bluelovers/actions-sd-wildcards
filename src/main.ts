@@ -1,4 +1,4 @@
-import { notice, getInput, setFailed, setOutput } from '@actions/core'
+import { notice, getInput, setFailed, setOutput, InputOptions } from '@actions/core'
 import { stream } from 'fast-glob'
 import { dirname, extname, resolve } from 'path'
 import {
@@ -13,6 +13,11 @@ import { envBool } from 'env-bool';
 function isAllowedExt(ext: string, loose?: boolean): ext is '.yaml' | '.yml'
 {
 	return ext === '.yaml' || loose && ext === '.yml'
+}
+
+function getInputEnvBool(name: string, options?: InputOptions)
+{
+	return envBool(getInput(name, options)) as boolean
 }
 
 /**
@@ -72,8 +77,9 @@ export async function run(): Promise<void>
 			}
 
 			const current = parseWildcardsYaml(await readFile(file), {
-				allowMultiRoot: envBool(getInput('allowMultiRoot')) as boolean,
-				disableUnsafeQuote: envBool(getInput('disableUnsafeQuote')) as boolean,
+				allowMultiRoot: getInputEnvBool('allowMultiRoot'),
+				disableUnsafeQuote: getInputEnvBool('disableUnsafeQuote'),
+				minifyPrompts: getInputEnvBool('minifyPrompts'),
 			});
 
 			if (doc)
@@ -84,7 +90,7 @@ export async function run(): Promise<void>
 			doc ??= current;
 		}
 
-		if (envBool(getInput('autoCreateOutputDir')))
+		if (getInputEnvBool('autoCreateOutputDir'))
 		{
 			await mkdir(dirname(outputFile), {
 				recursive: true,

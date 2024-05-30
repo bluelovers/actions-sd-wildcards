@@ -56,7 +56,7 @@ jobs:
                git config --local user.name "GitHub Action"
          -
             name: bundle Stable Diffusion wildcards
-            uses: bluelovers/actions-sd-wildcards@v1.0.3
+            uses: bluelovers/actions-sd-wildcards@v1.0.4
             with:
                paths: |
                   costumes/*.yaml
@@ -65,9 +65,10 @@ jobs:
                allowMultiRoot: 1
                autoCreateOutputDir: 1
                disableUnsafeQuote: 1
+               minifyPrompts: 0
          -
             name: bundle Stable Diffusion wildcards
-            uses: bluelovers/actions-sd-wildcards@v1.0.3
+            uses: bluelovers/actions-sd-wildcards@v1.0.4
             with:
                paths: |
                   costumes/*.yaml
@@ -77,6 +78,7 @@ jobs:
                allowMultiRoot: 1
                autoCreateOutputDir: 1
                disableUnsafeQuote: 1
+               minifyPrompts: 0
          -
             name: git commit
             run: |
