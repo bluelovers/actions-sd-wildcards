@@ -24,6 +24,8 @@ inputs:
     description: 'wildcards disableUnsafeQuote'
   disableBundle:
     description: 'disable bundle wildcards'
+  dirReportWildcardsPaths:
+    description: 'dirname for report wildcards paths'
 
 # Define your outputs here.
 outputs:

@@ -1,10 +1,10 @@
 import { notice, getInput, setFailed, setOutput, InputOptions } from '@actions/core'
 import { stream } from 'fast-glob'
-import { dirname, extname, resolve } from 'path'
+import { dirname, extname, resolve, join } from 'path'
 import {
-	_mergeWildcardsYAMLDocumentRootsCore,
+	_mergeWildcardsYAMLDocumentRootsCore, findWildcardsYAMLPathsAll,
 	IWildcardsYAMLDocument,
-	parseWildcardsYaml,
+	parseWildcardsYaml, pathsToWildcardsPath,
 	stringifyWildcardsYamlData,
 } from 'sd-wildcards-utils';
 import { mkdir, readFile, writeFile } from 'fs/promises';
@@ -68,6 +68,27 @@ export async function run(): Promise<void>
 		const disableUnsafeQuote = getInputEnvBool('disableUnsafeQuote');
 		const minifyPrompts = getInputEnvBool('minifyPrompts');
 
+		const autoCreateOutputDir = getInputEnvBool('autoCreateOutputDir');
+
+		let dirReportWildcardsPaths = getInput('dirReportWildcardsPaths');
+		if (envBool(dirReportWildcardsPaths))
+		{
+			dirReportWildcardsPaths = './__file_snapshots__/paths'
+		}
+		else if (dirReportWildcardsPaths?.length)
+		{
+			dirReportWildcardsPaths = resolve(dirReportWildcardsPaths)
+
+			if (/\.[\/\\]|\.$/.test(dirReportWildcardsPaths))
+			{
+				throw new RangeError(`The dirReportWildcardsPaths should not include ./`)
+			}
+		}
+		else
+		{
+			dirReportWildcardsPaths = void 0;
+		}
+
 		for await (const file of stream(paths, {
 			absolute: true,
 			onlyFiles: true,
@@ -93,12 +114,33 @@ export async function run(): Promise<void>
 				_mergeWildcardsYAMLDocumentRootsCore(doc, current);
 			}
 
+			if (dirReportWildcardsPaths)
+			{
+				let paths = findWildcardsYAMLPathsAll(current)
+					.map(v => `__${pathsToWildcardsPath(v)}__`)
+				;
+
+				if (paths.length)
+				{
+					let outputFile = join(dirReportWildcardsPaths, file + '.txt');
+
+					if (autoCreateOutputDir)
+					{
+						await mkdir(dirname(outputFile), {
+							recursive: true,
+						})
+					}
+
+					await writeFile(outputFile, paths.join('\n'))
+				}
+			}
+
 			doc ??= current;
 		}
 
 		if (bundle)
 		{
-			if (getInputEnvBool('autoCreateOutputDir'))
+			if (autoCreateOutputDir)
 			{
 				await mkdir(dirname(outputFile), {
 					recursive: true,
