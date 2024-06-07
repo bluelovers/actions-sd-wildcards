@@ -52359,9 +52359,10 @@ function getInputEnvBool(name, options) {
  */
 async function run() {
     try {
+        const bundle = !getInputEnvBool('disableBundle');
         let outputFile = (0, core_1.getInput)('outputFile');
         (0, core_1.notice)(`outputFile: ${outputFile}`);
-        if (!isAllowedExt((0, path_1.extname)(outputFile))) {
+        if (bundle && !isAllowedExt((0, path_1.extname)(outputFile))) {
             throw new RangeError(`The extname of outputFile only allow .yaml`);
         }
         outputFile = (0, path_1.resolve)(outputFile);
@@ -52378,6 +52379,23 @@ async function run() {
             throw new RangeError(`The paths should not be empty`);
         }
         let doc;
+        const allowMultiRoot = getInputEnvBool('allowMultiRoot');
+        const disableUnsafeQuote = getInputEnvBool('disableUnsafeQuote');
+        const minifyPrompts = getInputEnvBool('minifyPrompts');
+        const autoCreateOutputDir = getInputEnvBool('autoCreateOutputDir');
+        let dirReportWildcardsPaths = (0, core_1.getInput)('dirReportWildcardsPaths');
+        if ((0, env_bool_1.envBool)(dirReportWildcardsPaths)) {
+            dirReportWildcardsPaths = './__file_snapshots__/paths';
+        }
+        else if (dirReportWildcardsPaths?.length) {
+            dirReportWildcardsPaths = (0, path_1.resolve)(dirReportWildcardsPaths);
+            if (/\.[\/\\]|\.$/.test(dirReportWildcardsPaths)) {
+                throw new RangeError(`The dirReportWildcardsPaths should not include ./`);
+            }
+        }
+        else {
+            dirReportWildcardsPaths = void 0;
+        }
         for await (const file of (0, fast_glob_1.stream)(paths, {
             absolute: true,
             onlyFiles: true,
@@ -52389,24 +52407,39 @@ async function run() {
                 throw new RangeError(`The extname of file only allow .yaml or .yml`);
             }
             const current = (0, sd_wildcards_utils_1.parseWildcardsYaml)(await (0, promises_1.readFile)(file), {
-                allowMultiRoot: getInputEnvBool('allowMultiRoot'),
-                disableUnsafeQuote: getInputEnvBool('disableUnsafeQuote'),
-                minifyPrompts: getInputEnvBool('minifyPrompts'),
+                allowMultiRoot,
+                disableUnsafeQuote,
+                minifyPrompts,
             });
-            if (doc) {
+            if (bundle && doc) {
                 (0, sd_wildcards_utils_1._mergeWildcardsYAMLDocumentRootsCore)(doc, current);
+            }
+            if (dirReportWildcardsPaths) {
+                let paths = (0, sd_wildcards_utils_1.findWildcardsYAMLPathsAll)(current)
+                    .map(v => `__${(0, sd_wildcards_utils_1.pathsToWildcardsPath)(v)}__`);
+                if (paths.length) {
+                    let outputFile = (0, path_1.join)(dirReportWildcardsPaths, file + '.txt');
+                    if (autoCreateOutputDir) {
+                        await (0, promises_1.mkdir)((0, path_1.dirname)(outputFile), {
+                            recursive: true,
+                        });
+                    }
+                    await (0, promises_1.writeFile)(outputFile, paths.join('\n'));
+                }
             }
             doc ??= current;
         }
-        if (getInputEnvBool('autoCreateOutputDir')) {
-            await (0, promises_1.mkdir)((0, path_1.dirname)(outputFile), {
-                recursive: true,
-            });
+        if (bundle) {
+            if (autoCreateOutputDir) {
+                await (0, promises_1.mkdir)((0, path_1.dirname)(outputFile), {
+                    recursive: true,
+                });
+            }
+            await (0, promises_1.writeFile)(outputFile, (0, sd_wildcards_utils_1.stringifyWildcardsYamlData)(doc, {
+                lineWidth: 0,
+            }));
+            (0, core_1.notice)(`output: ${outputFile}`);
         }
-        await (0, promises_1.writeFile)(outputFile, (0, sd_wildcards_utils_1.stringifyWildcardsYamlData)(doc, {
-            lineWidth: 0,
-        }));
-        (0, core_1.notice)(`output: ${outputFile}`);
         // Set outputs for other workflow steps to use
         (0, core_1.setOutput)('time', new Date().toTimeString());
     }
@@ -63029,6 +63062,7 @@ function defaultOptionsStringify(opts) {
     defaultKeyType: 'PLAIN',
     defaultStringType: 'PLAIN',
     collectionStyle: 'block',
+    uniqueKeys: true,
     ...opts
   };
 }
@@ -63074,12 +63108,88 @@ function uniqueSeqItems(items) {
     checker: uniqueSeqItemsChecker
   });
 }
+/**
+ * This function is used to find a single root node in a YAML structure.
+ * It traverses the YAML structure and returns the first node that has only one child.
+ * If the node is a Document, it will start from its contents.
+ *
+ * @param node - The YAML node to start the search from.
+ * @param result - An optional object to store the result.
+ * @returns - An object containing the paths, key, value, and parent of the found single root node.
+ *            If no single root node is found, it returns the input `result` object.
+ * @throws - Throws a TypeError if the Document Node is passed as a child node.
+ */
+function deepFindSingleRootAt(node, result) {
+  if (yaml.isMap(node) && node.items.length === 1) {
+    var _result$paths;
+    let child = node.items[0];
+    let key = child.key.value;
+    let paths = (_result$paths = result === null || result === void 0 ? void 0 : result.paths) !== null && _result$paths !== void 0 ? _result$paths : [];
+    paths.push(key);
+    let value = child.value;
+    return deepFindSingleRootAt(value, {
+      paths,
+      key,
+      value,
+      parent: node
+    });
+  } else if (yaml.isDocument(node)) {
+    if (result) {
+      throw new TypeError(`The Document Node should not as Child Node`);
+    }
+    let value = node.contents;
+    return deepFindSingleRootAt(value, {
+      paths: [],
+      key: void 0,
+      value,
+      parent: node
+    });
+  }
+  return result;
+}
+function _handleVisitPathsCore(nodePaths) {
+  return nodePaths.filter(p => yaml.isPair(p));
+}
+function convertPairsToPathsList(nodePaths) {
+  return nodePaths.map(p => p.key.value);
+}
+function handleVisitPaths(nodePaths) {
+  return convertPairsToPathsList(_handleVisitPathsCore(nodePaths));
+}
+function handleVisitPathsFull(key, _node, nodePaths) {
+  const paths = handleVisitPaths(nodePaths);
+  if (typeof key === 'number') {
+    paths.push(key);
+  }
+  return paths;
+}
+/**
+ * This function is used to find all paths of sequences in a given YAML structure.
+ * It traverses the YAML structure and collects the paths of all sequences (Seq nodes).
+ *
+ * @param node - The YAML node to start the search from. It can be a Node, Document.
+ * @returns - An array of arrays, where each inner array represents a path of sequence nodes.
+ *            Each path is represented as an array of paths, where each path is a key or index.
+ */
+function findWildcardsYAMLPathsAll(node) {
+  const ls = [];
+  visitWildcardsYAML(node, {
+    Seq(...args) {
+      const paths = handleVisitPathsFull(...args);
+      ls.push(paths);
+    }
+  });
+  return ls;
+}
 
 // @ts-ignore
 function _validMap(key, node, ...args) {
-  const elem = node.items.find(pair => (pair === null || pair === void 0 ? void 0 : pair.value) == null);
-  if (elem) {
-    throw new SyntaxError(`Invalid SYNTAX. key: ${key}, node: ${node}, elem: ${elem}`);
+  const idx = node.items.findIndex(pair => !yaml.isPair(pair) || (pair === null || pair === void 0 ? void 0 : pair.value) == null);
+  if (idx !== -1) {
+    // @ts-ignore
+    const paths = handleVisitPathsFull(key, node, ...args);
+    const elem = node.items[idx];
+    throw new SyntaxError(`Invalid SYNTAX. paths: [${paths}], key: ${key}, node: ${node}, elem: ${elem}`);
   }
 }
 // @ts-ignore
@@ -63128,7 +63238,7 @@ function trimPrompts(value) {
 function formatPrompts(value, opts) {
   var _opts;
   (_opts = opts) !== null && _opts !== void 0 ? _opts : opts = {};
-  value = value.replace(/[\s\xa0]+/gm, ' ');
+  value = value.replace(/[\s\xa0]+/gm, ' ').replace(/[\s,.]+(?=,)/gm, '');
   if (opts.minifyPrompts) {
     value = value.replace(/(,)\s+/gm, '$1').replace(/\s+(,)/gm, '$1');
   }
@@ -63302,6 +63412,51 @@ function mergeWildcardsYAMLDocumentJsonBy(ls, opts) {
 function _toJSON(v) {
   return yaml.isDocument(v) ? v.toJSON() : v;
 }
+/**
+ * Merges a single root YAMLMap or Document with a list of YAMLMap or Document.
+ * The function only merges the root nodes of the provided YAML structures.
+ *
+ * @throws {TypeError} - If the merge target is not a YAMLMap or Document.
+ * @throws {TypeError} - If the current node is not a YAMLMap.
+ * @throws {TypeError} - If the current node does not support deep merge.
+ */
+function mergeFindSingleRoots(doc, list) {
+  if (!yaml.isDocument(doc) && !yaml.isMap(doc)) {
+    throw TypeError(`The merge target should be a YAMLMap or Document. doc: ${doc}`);
+  }
+  list = [list].flat();
+  for (let node of list) {
+    let result = deepFindSingleRootAt(node);
+    if (result) {
+      let current = doc.getIn(result.paths);
+      if (current) {
+        if (!yaml.isMap(current)) {
+          throw TypeError(`Only YAMLMap can be merged. node: ${current}`);
+        }
+        result.value.items
+        // @ts-ignore
+        .forEach(p => {
+          let key = p.key.value;
+          let sub = current.get(key);
+          if (sub) {
+            if (yaml.isSeq(sub) && yaml.isSeq(p.value)) {
+              sub.items.push(...p.value.items);
+            } else {
+              throw TypeError(`Current does not support deep merge. paths: [${result.paths.concat(key)}], a: ${sub}, b: ${p.value}`);
+            }
+          } else {
+            current.items.push(p);
+          }
+        });
+      } else {
+        doc.setIn(result.paths, result.value);
+      }
+    } else {
+      throw TypeError(`Only YAMLMap can be merged. node: ${node}`);
+    }
+  }
+  return doc;
+}
 
 function pathsToWildcardsPath(paths) {
   return paths.join('/');
@@ -63464,28 +63619,35 @@ function parseWildcardsYaml(source, opts) {
 exports.RE_DYNAMIC_PROMPTS_WILDCARDS = RE_DYNAMIC_PROMPTS_WILDCARDS;
 exports.RE_DYNAMIC_PROMPTS_WILDCARDS_GLOBAL = RE_DYNAMIC_PROMPTS_WILDCARDS_GLOBAL;
 exports.RE_WILDCARDS_NAME = RE_WILDCARDS_NAME;
+exports._handleVisitPathsCore = _handleVisitPathsCore;
 exports._matchDynamicPromptsWildcardsCore = _matchDynamicPromptsWildcardsCore;
 exports._mergeWildcardsYAMLDocumentRootsCore = _mergeWildcardsYAMLDocumentRootsCore;
 exports._toJSON = _toJSON;
 exports._validMap = _validMap;
 exports._validSeq = _validSeq;
 exports.assertWildcardsName = assertWildcardsName;
+exports.convertPairsToPathsList = convertPairsToPathsList;
 exports.convertWildcardsNameToPaths = convertWildcardsNameToPaths;
 exports.createDefaultVisitWildcardsYAMLOptions = createDefaultVisitWildcardsYAMLOptions;
+exports.deepFindSingleRootAt = deepFindSingleRootAt;
 exports["default"] = parseWildcardsYaml;
 exports.defaultCheckerIgnoreCase = defaultCheckerIgnoreCase;
 exports.defaultOptionsParseDocument = defaultOptionsParseDocument;
 exports.defaultOptionsStringify = defaultOptionsStringify;
 exports.defaultOptionsStringifyMinify = defaultOptionsStringifyMinify;
 exports.findPath = findPath;
+exports.findWildcardsYAMLPathsAll = findWildcardsYAMLPathsAll;
 exports.formatPrompts = formatPrompts;
 exports.getOptionsFromDocument = getOptionsFromDocument;
 exports.getOptionsShared = getOptionsShared;
+exports.handleVisitPaths = handleVisitPaths;
+exports.handleVisitPathsFull = handleVisitPathsFull;
 exports.isDynamicPromptsWildcards = isDynamicPromptsWildcards;
 exports.isWildcardsName = isWildcardsName;
 exports.matchDynamicPromptsWildcards = matchDynamicPromptsWildcards;
 exports.matchDynamicPromptsWildcardsAll = matchDynamicPromptsWildcardsAll;
 exports.matchDynamicPromptsWildcardsAllGenerator = matchDynamicPromptsWildcardsAllGenerator;
+exports.mergeFindSingleRoots = mergeFindSingleRoots;
 exports.mergeWildcardsYAMLDocumentJsonBy = mergeWildcardsYAMLDocumentJsonBy;
 exports.mergeWildcardsYAMLDocumentRoots = mergeWildcardsYAMLDocumentRoots;
 exports.normalizeDocument = normalizeDocument;
@@ -63533,6 +63695,7 @@ function defaultOptionsStringify(t) {
     defaultKeyType: "PLAIN",
     defaultStringType: "PLAIN",
     collectionStyle: "block",
+    uniqueKeys: !0,
     ...t
   };
 }
@@ -63575,14 +63738,60 @@ function uniqueSeqItems(t) {
   });
 }
 
-function _validMap(t, e, ...r) {
-  const o = e.items.find((t => null == (null == t ? void 0 : t.value)));
-  if (o) throw new SyntaxError(`Invalid SYNTAX. key: ${t}, node: ${e}, elem: ${o}`);
+function deepFindSingleRootAt(e, r) {
+  if (t.isMap(e) && 1 === e.items.length) {
+    var i;
+    let t = e.items[0], o = t.key.value, n = null !== (i = null == r ? void 0 : r.paths) && void 0 !== i ? i : [];
+    n.push(o);
+    let s = t.value;
+    return deepFindSingleRootAt(s, {
+      paths: n,
+      key: o,
+      value: s,
+      parent: e
+    });
+  }
+  if (t.isDocument(e)) {
+    if (r) throw new TypeError("The Document Node should not as Child Node");
+    let t = e.contents;
+    return deepFindSingleRootAt(t, {
+      paths: [],
+      key: void 0,
+      value: t,
+      parent: e
+    });
+  }
+  return r;
 }
 
-function _validSeq(e, r, ...o) {
-  const i = r.items.findIndex((e => !t.isScalar(e)));
-  if (-1 !== i) throw new SyntaxError(`Invalid SYNTAX. key: ${e}, node: ${r}, index: ${i}, node: ${r.items[i]}`);
+function _handleVisitPathsCore(e) {
+  return e.filter((e => t.isPair(e)));
+}
+
+function convertPairsToPathsList(t) {
+  return t.map((t => t.key.value));
+}
+
+function handleVisitPaths(t) {
+  return convertPairsToPathsList(_handleVisitPathsCore(t));
+}
+
+function handleVisitPathsFull(t, e, r) {
+  const i = handleVisitPaths(r);
+  return "number" == typeof t && i.push(t), i;
+}
+
+function _validMap(e, r, ...i) {
+  const o = r.items.findIndex((e => !t.isPair(e) || null == (null == e ? void 0 : e.value)));
+  if (-1 !== o) {
+    const t = handleVisitPathsFull(e, r, ...i);
+    throw new SyntaxError(`Invalid SYNTAX. paths: [${t}], key: ${e}, node: ${r}, elem: ${r.items[o]}`);
+  }
+}
+
+function _validSeq(e, r, ...i) {
+  const o = r.items.findIndex((e => !t.isScalar(e)));
+  if (-1 !== o) throw new SyntaxError(`Invalid SYNTAX. key: ${e}, node: ${r}, index: ${o}, node: ${r.items[o]}`);
 }
 
 function createDefaultVisitWildcardsYAMLOptions() {
@@ -63593,18 +63802,18 @@ function createDefaultVisitWildcardsYAMLOptions() {
 }
 
 function validWildcardsYamlData(e, r) {
-  var o;
+  var i;
   if (t.isDocument(e)) {
     if (t.isNode(e.contents) && !t.isMap(e.contents)) throw TypeError(`The 'contents' property of the provided YAML document must be a YAMLMap. Received: ${e.contents}`);
     visitWildcardsYAML(e, createDefaultVisitWildcardsYAMLOptions()), e = e.toJSON();
   }
-  if (null !== (o = r) && void 0 !== o || (r = {}), null == e) {
+  if (null !== (i = r) && void 0 !== i || (r = {}), null == e) {
     if (r.allowEmptyDocument) return;
     throw new TypeError(`The provided JSON contents should not be empty. ${e}`);
   }
-  let i = Object.keys(e);
-  if (!i.length) throw TypeError("The provided JSON contents must contain at least one key.");
-  if (1 !== i.length && !r.allowMultiRoot) throw TypeError("The provided JSON object cannot have more than one root key. Only one root key is allowed unless explicitly allowed by the 'allowMultiRoot' option.");
+  let o = Object.keys(e);
+  if (!o.length) throw TypeError("The provided JSON contents must contain at least one key.");
+  if (1 !== o.length && !r.allowMultiRoot) throw TypeError("The provided JSON object cannot have more than one root key. Only one root key is allowed unless explicitly allowed by the 'allowMultiRoot' option.");
 }
 
 function stripZeroStr(t) {
@@ -63617,32 +63826,32 @@ function trimPrompts(t) {
 
 function formatPrompts(t, e) {
   var r;
-  return null !== (r = e) && void 0 !== r || (e = {}), t = t.replace(/[\s\xa0]+/gm, " "), 
+  return null !== (r = e) && void 0 !== r || (e = {}), t = t.replace(/[\s\xa0]+/gm, " ").replace(/[\s,.]+(?=,)/gm, ""), 
   e.minifyPrompts && (t = t.replace(/(,)\s+/gm, "$1").replace(/\s+(,)/gm, "$1")), 
   t;
 }
 
-const o = /__([&~!@])?([*\w\/_\-]+)(\([^\n#]+\))?__/, i = /*#__PURE__*/ new RegExp(o, o.flags + "g"), n = /^[\w\-_\/]+$/;
+const i = /__([&~!@])?([*\w\/_\-]+)(\([^\n#]+\))?__/, o = /*#__PURE__*/ new RegExp(i, i.flags + "g"), n = /^[\w\-_\/]+$/;
 
 function matchDynamicPromptsWildcards(t) {
-  return _matchDynamicPromptsWildcardsCore(t.match(o), t);
+  return _matchDynamicPromptsWildcardsCore(t.match(i), t);
 }
 
 function _matchDynamicPromptsWildcardsCore(t, e) {
   if (!t) return null;
-  let [r, o, i, n] = t;
+  let [r, i, o, n] = t;
   return {
-    name: i,
+    name: o,
     variables: n,
-    keyword: o,
+    keyword: i,
     source: r,
     isFullMatch: r === (null != e ? e : t.input),
-    isStarWildcards: i.includes("*")
+    isStarWildcards: o.includes("*")
   };
 }
 
 function* matchDynamicPromptsWildcardsAllGenerator(t) {
-  const e = t.matchAll(i);
+  const e = t.matchAll(o);
   for (let r of e) yield _matchDynamicPromptsWildcardsCore(r, t);
 }
 
@@ -63662,62 +63871,62 @@ const s = /['"]/, a = /^\s*-|[{$~!@}\n|:?#]/;
 
 function normalizeDocument(t, e) {
   let r = getOptionsFromDocument(t, e);
-  const o = createDefaultVisitWildcardsYAMLOptions();
-  let i = !r.disableUnsafeQuote, n = {
-    ...o,
+  const i = createDefaultVisitWildcardsYAMLOptions();
+  let o = !r.disableUnsafeQuote, n = {
+    ...i,
     Scalar(t, e) {
-      let o = e.value;
-      if ("string" == typeof o) {
-        if (i && s.test(o)) throw new SyntaxError(`Invalid SYNTAX [UNSAFE_QUOTE]. key: ${t}, node: ${e}`);
-        ("QUOTE_DOUBLE" === e.type || "QUOTE_SINGLE" === e.type && !o.includes("\\")) && (e.type = "PLAIN"), 
-        o = trimPrompts(stripZeroStr(formatPrompts(o, r))), a.test(o) && ("PLAIN" === e.type || "BLOCK_FOLDED" === e.type && /#/.test(o)) && (e.type = "BLOCK_LITERAL"), 
-        e.value = o;
+      let i = e.value;
+      if ("string" == typeof i) {
+        if (o && s.test(i)) throw new SyntaxError(`Invalid SYNTAX [UNSAFE_QUOTE]. key: ${t}, node: ${e}`);
+        ("QUOTE_DOUBLE" === e.type || "QUOTE_SINGLE" === e.type && !i.includes("\\")) && (e.type = "PLAIN"), 
+        i = trimPrompts(stripZeroStr(formatPrompts(i, r))), a.test(i) && ("PLAIN" === e.type || "BLOCK_FOLDED" === e.type && /#/.test(i)) && (e.type = "BLOCK_LITERAL"), 
+        e.value = i;
       }
     }
   };
   if (!r.disableUniqueItemValues) {
-    const t = o.Seq;
-    n.Seq = (e, r, ...o) => {
-      t(e, r, ...o), uniqueSeqItems(r.items);
+    const t = i.Seq;
+    n.Seq = (e, r, ...i) => {
+      t(e, r, ...i), uniqueSeqItems(r.items);
     };
   }
   visitWildcardsYAML(t, n);
 }
 
 function parseWildcardsYaml(e, r) {
-  var o;
-  (r = defaultOptionsParseDocument(r)).allowEmptyDocument && (null !== (o = e) && void 0 !== o || (e = ""));
-  let i = t.parseDocument(e.toString(), r);
-  return validWildcardsYamlData(i, r), i;
+  var i;
+  (r = defaultOptionsParseDocument(r)).allowEmptyDocument && (null !== (i = e) && void 0 !== i || (e = ""));
+  let o = t.parseDocument(e.toString(), r);
+  return validWildcardsYamlData(o, r), o;
 }
 
-exports.RE_DYNAMIC_PROMPTS_WILDCARDS = o, exports.RE_DYNAMIC_PROMPTS_WILDCARDS_GLOBAL = i, 
-exports.RE_WILDCARDS_NAME = n, exports._matchDynamicPromptsWildcardsCore = _matchDynamicPromptsWildcardsCore, 
-exports._mergeWildcardsYAMLDocumentRootsCore = _mergeWildcardsYAMLDocumentRootsCore, 
+exports.RE_DYNAMIC_PROMPTS_WILDCARDS = i, exports.RE_DYNAMIC_PROMPTS_WILDCARDS_GLOBAL = o, 
+exports.RE_WILDCARDS_NAME = n, exports._handleVisitPathsCore = _handleVisitPathsCore, 
+exports._matchDynamicPromptsWildcardsCore = _matchDynamicPromptsWildcardsCore, exports._mergeWildcardsYAMLDocumentRootsCore = _mergeWildcardsYAMLDocumentRootsCore, 
 exports._toJSON = _toJSON, exports._validMap = _validMap, exports._validSeq = _validSeq, 
 exports.assertWildcardsName = function assertWildcardsName(t) {
   if (isWildcardsName(t)) throw new SyntaxError(`Invalid Wildcards Name Syntax: ${t}`);
-}, exports.convertWildcardsNameToPaths = function convertWildcardsNameToPaths(t) {
+}, exports.convertPairsToPathsList = convertPairsToPathsList, exports.convertWildcardsNameToPaths = function convertWildcardsNameToPaths(t) {
   return t.split("/");
 }, exports.createDefaultVisitWildcardsYAMLOptions = createDefaultVisitWildcardsYAMLOptions, 
-exports["default"] = parseWildcardsYaml, exports.defaultCheckerIgnoreCase = defaultCheckerIgnoreCase, 
-exports.defaultOptionsParseDocument = defaultOptionsParseDocument, exports.defaultOptionsStringify = defaultOptionsStringify, 
-exports.defaultOptionsStringifyMinify = function defaultOptionsStringifyMinify() {
+exports.deepFindSingleRootAt = deepFindSingleRootAt, exports["default"] = parseWildcardsYaml, 
+exports.defaultCheckerIgnoreCase = defaultCheckerIgnoreCase, exports.defaultOptionsParseDocument = defaultOptionsParseDocument, 
+exports.defaultOptionsStringify = defaultOptionsStringify, exports.defaultOptionsStringifyMinify = function defaultOptionsStringifyMinify() {
   return {
     lineWidth: 0,
     minifyPrompts: !0
   };
-}, exports.findPath = function findPath(t, e, o = [], i = []) {
+}, exports.findPath = function findPath(t, e, i = [], o = []) {
   const n = (e = e.slice()).shift(), s = e.length > 0;
   for (const a in t) if (r.isMatch(a, n)) {
-    const r = o.slice().concat(a), n = t[a], l = !Array.isArray(n);
+    const r = i.slice().concat(a), n = t[a], l = !Array.isArray(n);
     if (s) {
       if (l && "string" != typeof n) {
-        findPath(n, e, r, i);
+        findPath(n, e, r, o);
         continue;
       }
     } else if (!l) {
-      i.push({
+      o.push({
         key: r,
         value: n
       });
@@ -63725,16 +63934,46 @@ exports.defaultOptionsStringifyMinify = function defaultOptionsStringifyMinify()
     }
     throw new TypeError(`Invalid Type. paths: ${r}, value: ${n}`);
   }
-  return i;
+  return o;
+}, exports.findWildcardsYAMLPathsAll = function findWildcardsYAMLPathsAll(t) {
+  const e = [];
+  return visitWildcardsYAML(t, {
+    Seq(...t) {
+      const r = handleVisitPathsFull(...t);
+      e.push(r);
+    }
+  }), e;
 }, exports.formatPrompts = formatPrompts, exports.getOptionsFromDocument = getOptionsFromDocument, 
-exports.getOptionsShared = getOptionsShared, exports.isDynamicPromptsWildcards = function isDynamicPromptsWildcards(t) {
+exports.getOptionsShared = getOptionsShared, exports.handleVisitPaths = handleVisitPaths, 
+exports.handleVisitPathsFull = handleVisitPathsFull, exports.isDynamicPromptsWildcards = function isDynamicPromptsWildcards(t) {
   return matchDynamicPromptsWildcards(t).isFullMatch;
 }, exports.isWildcardsName = isWildcardsName, exports.matchDynamicPromptsWildcards = matchDynamicPromptsWildcards, 
 exports.matchDynamicPromptsWildcardsAll = function matchDynamicPromptsWildcardsAll(t, r) {
-  const o = [ ...matchDynamicPromptsWildcardsAllGenerator(t) ];
-  return r ? e.array_unique_overwrite(o) : o;
+  const i = [ ...matchDynamicPromptsWildcardsAllGenerator(t) ];
+  return r ? e.array_unique_overwrite(i) : i;
 }, exports.matchDynamicPromptsWildcardsAllGenerator = matchDynamicPromptsWildcardsAllGenerator, 
-exports.mergeWildcardsYAMLDocumentJsonBy = function mergeWildcardsYAMLDocumentJsonBy(t, e) {
+exports.mergeFindSingleRoots = function mergeFindSingleRoots(e, r) {
+  if (!t.isDocument(e) && !t.isMap(e)) throw TypeError(`The merge target should be a YAMLMap or Document. doc: ${e}`);
+  r = [ r ].flat();
+  for (let i of r) {
+    let r = deepFindSingleRootAt(i);
+    if (!r) throw TypeError(`Only YAMLMap can be merged. node: ${i}`);
+    {
+      let i = e.getIn(r.paths);
+      if (i) {
+        if (!t.isMap(i)) throw TypeError(`Only YAMLMap can be merged. node: ${i}`);
+        r.value.items.forEach((e => {
+          let o = e.key.value, n = i.get(o);
+          if (n) {
+            if (!t.isSeq(n) || !t.isSeq(e.value)) throw TypeError(`Current does not support deep merge. paths: [${r.paths.concat(o)}], a: ${n}, b: ${e.value}`);
+            n.items.push(...e.value.items);
+          } else i.items.push(e);
+        }));
+      } else e.setIn(r.paths, r.value);
+    }
+  }
+  return e;
+}, exports.mergeWildcardsYAMLDocumentJsonBy = function mergeWildcardsYAMLDocumentJsonBy(t, e) {
   return e.deepmerge(t.map(_toJSON));
 }, exports.mergeWildcardsYAMLDocumentRoots = function mergeWildcardsYAMLDocumentRoots(t) {
   return t.reduce(_mergeWildcardsYAMLDocumentRootsCore);
@@ -63744,9 +63983,9 @@ exports.pathsToDotPath = function pathsToDotPath(t) {
 }, exports.pathsToWildcardsPath = function pathsToWildcardsPath(t) {
   return t.join("/");
 }, exports.stringifyWildcardsYamlData = function stringifyWildcardsYamlData(e, r) {
-  const o = t.isDocument(e);
-  return o && (r = getOptionsFromDocument(e, r)), r = defaultOptionsStringify(r), 
-  o ? (normalizeDocument(e, r), e.toString(r)) : t.stringify(e, r);
+  const i = t.isDocument(e);
+  return i && (r = getOptionsFromDocument(e, r)), r = defaultOptionsStringify(r), 
+  i ? (normalizeDocument(e, r), e.toString(r)) : t.stringify(e, r);
 }, exports.stripZeroStr = stripZeroStr, exports.trimPrompts = trimPrompts, exports.uniqueSeqItems = uniqueSeqItems, 
 exports.uniqueSeqItemsChecker = uniqueSeqItemsChecker, exports.validWildcardsYamlData = validWildcardsYamlData, 
 exports.visitWildcardsYAML = visitWildcardsYAML, exports.wildcardsPathToPaths = function wildcardsPathToPaths(t) {
