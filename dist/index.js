@@ -52397,7 +52397,7 @@ async function run() {
             dirReportWildcardsPaths = void 0;
         }
         for await (const file of (0, fast_glob_1.stream)(paths, {
-            absolute: true,
+            //absolute: true,
             onlyFiles: true,
             throwErrorOnBrokenSymbolicLink: true,
             unique: true,
