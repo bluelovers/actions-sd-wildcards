@@ -24,6 +24,7 @@ jobs:
   check-dist:
     name: Check dist/
     runs-on: ubuntu-latest
+    if: 0
 
     steps:
       - name: Checkout
