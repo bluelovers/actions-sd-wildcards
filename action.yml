@@ -14,7 +14,6 @@ inputs:
     required: true
   outputFile:
     description: 'outputFile path'
-    required: true
   autoCreateOutputDir:
     description: 'auto create outputFile path'
   allowMultiRoot:
@@ -23,6 +22,8 @@ inputs:
     description: 'wildcards disableUnsafeQuote'
   minifyPrompts:
     description: 'wildcards disableUnsafeQuote'
+  disableBundle:
+    description: 'disable bundle wildcards'
 
 # Define your outputs here.
 outputs:

@@ -28,11 +28,13 @@ export async function run(): Promise<void>
 {
 	try
 	{
+		const bundle = !getInputEnvBool('disableBundle');
+
 		let outputFile: string = getInput('outputFile')
 
 		notice(`outputFile: ${outputFile}`)
 
-		if (!isAllowedExt(extname(outputFile)))
+		if (bundle && !isAllowedExt(extname(outputFile)))
 		{
 			throw new RangeError(`The extname of outputFile only allow .yaml`)
 		}
@@ -62,6 +64,10 @@ export async function run(): Promise<void>
 
 		let doc: IWildcardsYAMLDocument;
 
+		const allowMultiRoot = getInputEnvBool('allowMultiRoot');
+		const disableUnsafeQuote = getInputEnvBool('disableUnsafeQuote');
+		const minifyPrompts = getInputEnvBool('minifyPrompts');
+
 		for await (const file of stream(paths, {
 			absolute: true,
 			onlyFiles: true,
@@ -77,12 +83,12 @@ export async function run(): Promise<void>
 			}
 
 			const current = parseWildcardsYaml(await readFile(file), {
-				allowMultiRoot: getInputEnvBool('allowMultiRoot'),
-				disableUnsafeQuote: getInputEnvBool('disableUnsafeQuote'),
-				minifyPrompts: getInputEnvBool('minifyPrompts'),
+				allowMultiRoot,
+				disableUnsafeQuote,
+				minifyPrompts,
 			});
 
-			if (doc)
+			if (bundle && doc)
 			{
 				_mergeWildcardsYAMLDocumentRootsCore(doc, current);
 			}
@@ -90,18 +96,21 @@ export async function run(): Promise<void>
 			doc ??= current;
 		}
 
-		if (getInputEnvBool('autoCreateOutputDir'))
+		if (bundle)
 		{
-			await mkdir(dirname(outputFile), {
-				recursive: true,
-			})
+			if (getInputEnvBool('autoCreateOutputDir'))
+			{
+				await mkdir(dirname(outputFile), {
+					recursive: true,
+				})
+			}
+
+			await writeFile(outputFile, stringifyWildcardsYamlData(doc, {
+				lineWidth: 0,
+			}))
+
+			notice(`output: ${outputFile}`)
 		}
-
-		await writeFile(outputFile, stringifyWildcardsYamlData(doc, {
-			lineWidth: 0,
-		}))
-
-		notice(`output: ${outputFile}`)
 
 		// Set outputs for other workflow steps to use
 		setOutput('time', new Date().toTimeString())
