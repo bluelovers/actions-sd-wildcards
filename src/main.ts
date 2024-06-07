@@ -90,7 +90,7 @@ export async function run(): Promise<void>
 		}
 
 		for await (const file of stream(paths, {
-			absolute: true,
+			//absolute: true,
 			onlyFiles: true,
 			throwErrorOnBrokenSymbolicLink: true,
 			unique: true,
