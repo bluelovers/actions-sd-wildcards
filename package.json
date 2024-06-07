@@ -71,24 +71,25 @@
     "crlf-normalize": "^1.0.20",
     "env-bool": "^2.0.1",
     "fast-glob": "^3.3.2",
-    "sd-wildcards-utils": "^1.0.18"
+    "sd-wildcards-utils": "^1.0.27",
+    "ts-type": "^3.0.1"
   },
   "devDependencies": {
     "@bluelovers/tsconfig": "^1.0.35",
     "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.12.13",
-    "@typescript-eslint/eslint-plugin": "^7.11.0",
-    "@typescript-eslint/parser": "^7.11.0",
+    "@types/node": "^20.14.2",
+    "@typescript-eslint/eslint-plugin": "^7.12.0",
+    "@typescript-eslint/parser": "^7.12.0",
     "@vercel/ncc": "^0.38.1",
     "eslint": "<9 >=8.57.0",
-    "eslint-plugin-github": "^4.10.2",
-    "eslint-plugin-jest": "^28.5.0",
+    "eslint-plugin-github": "^5.0.1",
+    "eslint-plugin-jest": "^28.6.0",
     "eslint-plugin-jsonc": "^2.16.0",
     "jest": "^29.7.0",
     "make-coverage-badge": "^1.2.0",
     "ts-jest": "^29.1.4",
     "tslib": ">=2.6.2",
-    "typescript": "^5.5.0-dev.20240530"
+    "typescript": "^5.6.0-dev.20240607"
   }
 }
