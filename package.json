@@ -71,7 +71,7 @@
     "crlf-normalize": "^1.0.20",
     "env-bool": "^2.0.1",
     "fast-glob": "^3.3.2",
-    "sd-wildcards-utils": "^1.0.27",
+    "sd-wildcards-utils": "^1.0.29",
     "ts-type": "^3.0.1"
   },
   "devDependencies": {
@@ -90,6 +90,6 @@
     "make-coverage-badge": "^1.2.0",
     "ts-jest": "^29.1.4",
     "tslib": ">=2.6.2",
-    "typescript": "^5.6.0-dev.20240607"
+    "typescript": "^5.6.0-dev.20240610"
   }
 }

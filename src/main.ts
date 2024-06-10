@@ -1,8 +1,8 @@
-import { notice, getInput, setFailed, setOutput, InputOptions } from '@actions/core'
+import { notice, error, getInput, setFailed, setOutput, InputOptions } from '@actions/core'
 import { stream } from 'fast-glob'
 import { dirname, extname, resolve, join } from 'path'
 import {
-	_mergeWildcardsYAMLDocumentRootsCore, findWildcardsYAMLPathsAll,
+	_mergeWildcardsYAMLDocumentRootsCore, checkAllSelfLinkWildcardsExists, findWildcardsYAMLPathsAll,
 	IWildcardsYAMLDocument,
 	parseWildcardsYaml, pathsToWildcardsPath,
 	stringifyWildcardsYamlData,
@@ -67,6 +67,7 @@ export async function run(): Promise<void>
 		const allowMultiRoot = getInputEnvBool('allowMultiRoot');
 		const disableUnsafeQuote = getInputEnvBool('disableUnsafeQuote');
 		const minifyPrompts = getInputEnvBool('minifyPrompts');
+		const checkUsedNodeExists = getInputEnvBool('checkUsedNodeExists');
 
 		const autoCreateOutputDir = getInputEnvBool('autoCreateOutputDir');
 
@@ -152,6 +153,19 @@ export async function run(): Promise<void>
 			}))
 
 			notice(`output: ${outputFile}`)
+		}
+
+		if (checkUsedNodeExists)
+		{
+			let ret = checkAllSelfLinkWildcardsExists(doc)
+
+			if (ret.notExistsOrError.length)
+			{
+				const e = new Error(`Failure or missing some wildcards nodes.\n${JSON.stringify(ret.notExistsOrError, null, 2)}`)
+				error(e)
+
+				throw e;
+			}
 		}
 
 		// Set outputs for other workflow steps to use

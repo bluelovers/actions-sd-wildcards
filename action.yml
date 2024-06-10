@@ -26,6 +26,8 @@ inputs:
     description: 'disable bundle wildcards'
   dirReportWildcardsPaths:
     description: 'dirname for report wildcards paths'
+  checkUsedNodeExists:
+    description: 'check used wildcards node exists'
 
 # Define your outputs here.
 outputs:
