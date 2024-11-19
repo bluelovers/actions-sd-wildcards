@@ -55200,6 +55200,7 @@ async function run() {
             onlyFiles: true,
             throwErrorOnBrokenSymbolicLink: true,
             unique: true,
+            concurrency: 1,
         })) {
             (0, core_1.notice)(`processing ${file}`);
             if (!isAllowedExt((0, path_1.extname)(file), true)) {
